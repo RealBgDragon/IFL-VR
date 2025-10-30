@@ -1,0 +1,26 @@
+{
+  "rendering": {
+    "resolution": "1920x1080",
+    "antialiasing": true,
+    "shadows": true
+  },
+  "vrDevices": {
+    "supported": [
+      "Oculus Rift",
+      "HTC Vive",
+      "Valve Index"
+    ],
+    "defaultDevice": "Oculus Rift"
+  },
+  "physics": {
+    "gravity": -9.81,
+    "collisionDetection": true
+  },
+  "environment": {
+    "backgroundColor": "#000000",
+    "lighting": {
+      "type": "directional",
+      "intensity": 1.0
+    }
+  }
+}

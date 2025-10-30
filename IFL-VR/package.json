@@ -1,0 +1,26 @@
+{
+  "name": "IFL-VR",
+  "version": "1.0.0",
+  "description": "A test project for virtual reality experiences.",
+  "main": "src/main.ts",
+  "scripts": {
+    "start": "ts-node src/main.ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "three": "^0.132.2",
+    "typescript": "^4.5.4"
+  },
+  "devDependencies": {
+    "ts-jest": "^27.0.7",
+    "jest": "^27.0.6"
+  },
+  "keywords": [
+    "VR",
+    "virtual reality",
+    "3D",
+    "simulation"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
