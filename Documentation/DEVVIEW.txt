@@ -1,0 +1,710 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    IFL-VR DEVELOPMENT VIEW (4+1 Architecture)                ║
+║                         Software Organization & Management                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            MODULE ORGANIZATION                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           LAYERED ARCHITECTURE                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                    PRESENTATION LAYER                           │
+    │                     (VR Interface)                              │
+    │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+    │  │   VRScene    │  │ VRControls   │  │ Environment  │           │
+    │  └──────────────┘  └──────────────┘  └──────────────┘           │
+    └─────────────────────────────┬───────────────────────────────────┘
+                                  │
+    ┌─────────────────────────────┼───────────────────────────────────┐
+    │                    BUSINESS LOGIC LAYER                         │
+    │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+    │  │     User     │  │ Matchmaking  │  │    Player    │           │
+    │  │   (Bridge)   │  │   System     │  │  (Physics)   │           │
+    │  └──────┬───────┘  └──────┬───────┘  └──────────────┘           │
+    │         │                 │                                     │
+    └─────────┼─────────────────┼─────────────────────────────────────┘
+              │                 │
+    ┌─────────┼─────────────────┼─────────────────────────────────────┐
+    │         │    UTILITY LAYER│                                     │
+    │  ┌──────▼───────┐  ┌──────▼───────┐  ┌──────────────┐           │
+    │  │mongo_schema  │  │   Physics    │  │   Helpers    │           │
+    │  │ (Data Model) │  │   Engine     │  │              │           │
+    │  └──────────────┘  └──────────────┘  └──────────────┘           │
+    └─────────────────────────────┬───────────────────────────────────┘
+                                  │
+    ┌─────────────────────────────┼───────────────────────────────────┐
+    │                    DATA ACCESS LAYER                            │
+    │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+    │  │   MongoDB    │  │   Mongoose   │  │    Cache     │           │
+    │  │   Driver     │  │    ODM       │  │  (Future)    │           │
+    │  └──────────────┘  └──────────────┘  └──────────────┘           │
+    └─────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         PACKAGE/MODULE STRUCTURE                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+IFL-VR/
+│
+├── src/                                    [Source Code Root]
+│   │
+│   ├── components/                         [Game Components - Business Logic]
+│   │   ├── Player.ts                       • Physics & movement engine
+│   │   │   └── exports: Player class       • Independent, no dependencies
+│   │   │                                   • Used by: User.ts
+│   │   │
+│   │   ├── User.ts                         • User management & data bridge
+│   │   │   ├── imports: Player            • Links Player ↔ MongoDB
+│   │   │   ├── imports: mongo_schema      • Manages MMR, XP, inventory
+│   │   │   └── exports: User class        • Used by: Matchmaking.ts
+│   │   │
+│   │   ├── VRScene.ts                      • VR scene management
+│   │   │   └── imports: three.js          • Rendering & scene graph
+│   │   │
+│   │   └── Environment.ts                  • Game environment
+│   │       └── imports: three.js          • World objects & terrain
+│   │
+│   ├── utils/                              [Utility Modules]
+│   │   ├── mongo_schema.ts                 • MongoDB schemas & models
+│   │   │   ├── imports: mongoose          • Data layer definitions
+│   │   │   └── exports:                   • Used by: User.ts
+│   │   │       - IUser
+│   │   │       - IPlayerSettings
+│   │   │       - IPlayerInventory
+│   │   │       - User model
+│   │   │       - PlayerSettings model
+│   │   │       - PlayerInventory model
+│   │   │
+│   │   ├── Matchmaking.ts                  • Matchmaking system
+│   │   │   ├── imports: User              • Queue & lobby management
+│   │   │   └── exports:                   • MMR-based matching
+│   │   │       - MatchmakingSystem
+│   │   │       - QueuedPlayer
+│   │   │       - MatchLobby
+│   │   │       - GameMode
+│   │   │
+│   │   ├── Physics.ts                      • Physics utilities
+│   │   │   └── exports: Physics helpers   • Collision detection
+│   │   │
+│   │   └── VRControls.ts                   • VR input handling
+│   │       └── exports: VR controllers    • Headset & controller input
+│   │
+│   ├── examples/                           [Testing & Demos]
+│   │   └── matchmaking_mockup.ts           • Matchmaking demo
+│   │       ├── imports: User              • Mock data generation
+│   │       ├── imports: Matchmaking       • System testing
+│   │       └── imports: mongo_schema
+│   │
+│   └── main.ts                             [Application Entry Point]
+│       └── imports: All modules           • Bootstraps application
+│
+├── Documentation/                          [Project Documentation]
+│   ├── SYSTEM_DIAGRAM.txt                  • Architecture diagrams
+│   ├── MATCHMAKING_SYSTEM.md               • System documentation
+│   └── DEVVIEW.txt                         • This file
+│
+├── dist/                                   [Compiled Output]
+│   └── *.js                                • TypeScript → JavaScript
+│
+├── node_modules/                           [External Dependencies]
+│   ├── mongoose/                           • MongoDB ODM
+│   ├── three/                              • 3D graphics library
+│   └── typescript/                         • TypeScript compiler
+│
+├── package.json                            [Dependency Management]
+├── tsconfig.json                           [TypeScript Configuration]
+└── README.md                               [Project Overview]
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          MODULE DEPENDENCY GRAPH                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DEPENDENCY HIERARCHY                              │
+│                         (Top = No dependencies)                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Level 0 (Foundation - External Libraries)
+═══════════════════════════════════════════
+    ┌──────────┐  ┌──────────┐  ┌──────────┐
+    │ mongoose │  │ three.js │  │   node   │
+    └────┬─────┘  └────┬─────┘  └────┬─────┘
+         │             │              │
+         └─────────────┴──────────────┘
+
+Level 1 (Data Layer)
+═══════════════════════════════════════════
+              ┌──────────────────┐
+              │  mongo_schema.ts │
+              │  ┌─────────────┐ │
+              │  │ IUser       │ │
+              │  │ IPlayerSet  │ │
+              │  │ IInventory  │ │
+              │  └─────────────┘ │
+              └────────┬─────────┘
+                       │
+
+Level 2 (Core Components)
+═══════════════════════════════════════════
+         ┌─────────┴─────────┐
+         │                   │
+    ┌────▼──────┐      ┌─────▼──────┐
+    │ Player.ts │      │ Physics.ts │
+    │ (Physics) │      │ (Helpers)  │
+    └────┬──────┘      └────────────┘
+         │
+
+Level 3 (Business Logic)
+═══════════════════════════════════════════
+         │
+    ┌────▼──────────────┐
+    │     User.ts       │
+    │  ┌──────────────┐ │
+    │  │ • Player     │ │
+    │  │ • Settings   │ │
+    │  │ • Inventory  │ │
+    │  │ • MMR logic  │ │
+    │  └──────────────┘ │
+    └────────┬──────────┘
+             │
+
+Level 4 (System Services)
+═══════════════════════════════════════════
+             │
+    ┌────────▼──────────────┐
+    │   Matchmaking.ts      │
+    │  ┌─────────────────┐  │
+    │  │ • Queue mgmt    │  │
+    │  │ • MMR matching  │  │
+    │  │ • Lobby system  │  │
+    │  └─────────────────┘  │
+    └────────┬──────────────┘
+             │
+
+Level 5 (Presentation)
+═══════════════════════════════════════════
+             │
+    ┌────────▼──────────────┐
+    │   VRScene.ts          │
+    │   VRControls.ts       │
+    │   Environment.ts      │
+    └────────┬──────────────┘
+             │
+
+Level 6 (Application)
+═══════════════════════════════════════════
+             │
+        ┌────▼──────┐
+        │  main.ts  │
+        └───────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        DETAILED MODULE DEPENDENCIES                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Player.ts                                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Dependencies: NONE (Pure TypeScript)                                         │
+│ Exports:                                                                     │
+│   • Player class                                                             │
+│   • Vec3 interface                                                           │
+│   • MoveDirection type                                                       │
+│   • Axis type                                                                │
+│ Used By:                                                                     │
+│   • User.ts                                                                  │
+│ Purpose:                                                                     │
+│   • Physics engine for player movement                                       │
+│   • Independent, reusable component                                          │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ mongo_schema.ts                                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Dependencies:                                                                │
+│   • mongoose (external)                                                      │
+│ Exports:                                                                     │
+│   • IUser interface                                                          │
+│   • IPlayerSettings interface                                                │
+│   • IPlayerInventory interface                                               │
+│   • IMatchEntry interface                                                    │
+│   • User model                                                               │
+│   • PlayerSettings model                                                     │
+│   • PlayerInventory model                                                    │
+│ Used By:                                                                     │
+│   • User.ts                                                                  │
+│   • matchmaking_mockup.ts                                                    │
+│ Purpose:                                                                     │
+│   • Define MongoDB schemas                                                   │
+│   • Provide type safety for database operations                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ User.ts                                                                      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Dependencies:                                                                │
+│   • Player (from ./Player.ts)                                                │
+│   • mongo_schema (from ../utils/mongo_schema.ts)                             │
+│   • mongoose (external)                                                      │
+│ Exports:                                                                     │
+│   • User class                                                               │
+│ Used By:                                                                     │
+│   • Matchmaking.ts                                                           │
+│   • matchmaking_mockup.ts                                                    │
+│ Purpose:                                                                     │
+│   • Bridge Player physics with database                                      │
+│   • Manage user settings, stats, inventory                                   │
+│   • Calculate MMR and XP                                                     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Matchmaking.ts                                                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Dependencies:                                                                │
+│   • User (from ../components/User.ts)                                        │
+│ Exports:                                                                     │
+│   • MatchmakingSystem class                                                  │
+│   • QueuedPlayer interface                                                   │
+│   • MatchLobby interface                                                     │
+│   • GameMode type                                                            │
+│ Used By:                                                                     │
+│   • main.ts (future)                                                         │
+│   • matchmaking_mockup.ts                                                    │
+│ Purpose:                                                                     │
+│   • Queue management                                                         │
+│   • MMR-based matchmaking                                                    │
+│   • Lobby creation and tracking                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           BUILD & COMPILATION                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         TypeScript Compilation Flow                          │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+    Source Files (src/)
+         │
+         ├── *.ts files
+         │
+         ▼
+    ┌─────────────────┐
+    │ TypeScript      │  Configuration: tsconfig.json
+    │ Compiler (tsc)  │  • target: ES2017
+    │                 │  • module: commonjs
+    └────────┬────────┘  • strict: true
+             │           • outDir: ./dist
+             │           • rootDir: ./src
+             ▼
+    Compiled Output (dist/)
+         │
+         ├── *.js files
+         ├── *.js.map (source maps)
+         │
+         ▼
+    ┌─────────────────┐
+    │   Node.js       │
+    │   Runtime       │
+    └─────────────────┘
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            Build Configuration                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+tsconfig.json:
+──────────────
+{
+  "compilerOptions": {
+    "target": "ES2017",              // Modern JavaScript features
+    "lib": ["ES2017"],               // Standard library
+    "module": "commonjs",            // Node.js module system
+    "strict": true,                  // Strict type checking
+    "esModuleInterop": true,         // CommonJS/ES6 interop
+    "skipLibCheck": true,            // Skip .d.ts checks
+    "outDir": "./dist",              // Output directory
+    "rootDir": "./src",              // Source directory
+    "types": ["node"]                // Node.js type definitions
+  },
+  "include": ["src/**/*"],           // Include all source files
+  "exclude": ["node_modules", "dist"] // Exclude dependencies & output
+}
+
+
+package.json Scripts:
+─────────────────────
+{
+  "scripts": {
+    "start": "ts-node src/main.ts",        // Run without compiling
+    "build": "tsc",                        // Compile TypeScript
+    "test": "jest",                        // Run tests
+    "dev": "ts-node-dev src/main.ts",      // Development with hot reload
+    "lint": "eslint src/**/*.ts",          // Code linting
+    "format": "prettier --write src/**/*"  // Code formatting
+  }
+}
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        DEPENDENCY MANAGEMENT                                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         Production Dependencies                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+mongoose@^6.10.2
+├── Purpose: MongoDB ODM (Object Document Mapper)
+├── Used By: mongo_schema.ts, User.ts
+├── Size: ~1.2 MB
+└── License: MIT
+
+three@^0.132.2
+├── Purpose: 3D graphics library for VR rendering
+├── Used By: VRScene.ts, Environment.ts
+├── Size: ~1.5 MB
+└── License: MIT
+
+typescript@^4.5.4
+├── Purpose: TypeScript language & compiler
+├── Used By: All .ts files
+├── Size: ~60 MB
+└── License: Apache-2.0
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                       Development Dependencies                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+@types/node@^16.0.0
+├── Purpose: TypeScript definitions for Node.js
+├── Used By: All files using Node.js APIs
+├── Size: ~5 MB
+└── License: MIT
+
+ts-jest@^27.0.7
+├── Purpose: TypeScript preprocessor for Jest
+├── Used By: Test files
+├── Size: ~2 MB
+└── License: MIT
+
+jest@^27.0.6
+├── Purpose: Testing framework
+├── Used By: Test suite
+├── Size: ~15 MB
+└── License: MIT
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          CODE ORGANIZATION RULES                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            Naming Conventions                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Files:
+  • PascalCase for classes:       Player.ts, User.ts, Matchmaking.ts
+  • camelCase for utilities:       mongo_schema.ts, physics.ts
+  • lowercase for configs:         package.json, tsconfig.json
+
+Classes:
+  • PascalCase:                    Player, User, MatchmakingSystem
+
+Interfaces:
+  • PascalCase with 'I' prefix:    IUser, IPlayerSettings, IMatchEntry
+
+Types:
+  • PascalCase:                    GameMode, MoveDirection, Axis
+
+Variables/Functions:
+  • camelCase:                     updateMMR, addXP, recordMatch
+
+Constants:
+  • UPPER_SNAKE_CASE:              MMR_SEARCH_RANGE_BASE, MAX_QUEUE_TIME
+
+Private Methods:
+  • camelCase with '_' prefix:     _calculateMMR, _wrapAngle
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           Import/Export Rules                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+1. Default Exports:
+   • Use for main class/component of a file
+   • Example: export default Player;
+
+2. Named Exports:
+   • Use for interfaces, types, utilities
+   • Example: export { IUser, IPlayerSettings };
+
+3. Import Order:
+   • External libraries first
+   • Internal modules second
+   • Types/interfaces last
+
+4. Relative Imports:
+   • Use relative paths for local modules
+   • Example: import Player from './Player';
+   • Example: import { IUser } from '../utils/mongo_schema';
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          Module Responsibilities                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+components/
+  • Game-specific business logic
+  • Player mechanics, user management
+  • Should NOT directly access database
+  • Should use data models from utils/
+
+utils/
+  • Reusable utilities and helpers
+  • Database schemas and models
+  • Physics calculations
+  • Should be framework-agnostic where possible
+
+examples/
+  • Testing and demonstration code
+  • Mock data generation
+  • Can import from any module
+  • Not included in production builds
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            TESTING STRATEGY                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            Test Organization                                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+src/
+├── components/
+│   ├── Player.ts
+│   ├── Player.test.ts              ← Unit tests for Player
+│   ├── User.ts
+│   └── User.test.ts                ← Unit tests for User
+│
+├── utils/
+│   ├── Matchmaking.ts
+│   ├── Matchmaking.test.ts         ← Unit tests for Matchmaking
+│   ├── mongo_schema.ts
+│   └── mongo_schema.test.ts        ← Integration tests with MongoDB
+│
+└── examples/
+    └── matchmaking_mockup.ts       ← Integration/E2E tests
+
+
+Test Coverage Goals:
+─────────────────────
+  • Unit Tests:        80%+ coverage
+  • Integration Tests: Key workflows
+  • E2E Tests:         Critical user paths
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         VERSION CONTROL STRATEGY                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            Branch Strategy                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+main
+├── Production-ready code
+└── Protected branch, requires PR
+
+develop
+├── Integration branch
+├── Feature branches merge here
+└── Tested before merging to main
+
+feature/*
+├── New features
+├── Example: feature/matchmaking-system
+└── Merged to develop via PR
+
+bugfix/*
+├── Bug fixes
+├── Example: bugfix/mmr-calculation
+└── Merged to develop or main
+
+hotfix/*
+├── Critical production fixes
+├── Example: hotfix/lobby-crash
+└── Merged directly to main + develop
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            Commit Convention                                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Format: <type>(<scope>): <subject>
+
+Types:
+  • feat:     New feature
+  • fix:      Bug fix
+  • docs:     Documentation changes
+  • style:    Code style (formatting, no logic change)
+  • refactor: Code refactoring
+  • test:     Adding or updating tests
+  • chore:    Build process, dependencies
+
+Examples:
+  feat(matchmaking): add MMR-based queue system
+  fix(user): correct XP calculation for assists
+  docs(readme): update installation instructions
+  refactor(player): simplify movement logic
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          DEVELOPMENT WORKFLOW                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         Local Development Setup                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+1. Clone Repository
+   git clone <repository-url>
+   cd IFL-VR
+
+2. Install Dependencies
+   npm install
+
+3. Configure Environment
+   cp .env.example .env
+   # Edit .env with local settings
+
+4. Start MongoDB
+   mongod --dbpath ./data/db
+
+5. Run Development Server
+   npm run dev
+
+6. Run Tests
+   npm test
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         Feature Development Flow                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+1. Create Feature Branch
+   git checkout -b feature/new-feature
+
+2. Implement Feature
+   • Write code
+   • Add tests
+   • Update documentation
+
+3. Test Locally
+   npm test
+   npm run lint
+
+4. Commit Changes
+   git add .
+   git commit -m "feat(scope): description"
+
+5. Push to Remote
+   git push origin feature/new-feature
+
+6. Create Pull Request
+   • Describe changes
+   • Link related issues
+   • Request code review
+
+7. Address Review Comments
+   • Make changes
+   • Push updates
+
+8. Merge to Develop
+   • Squash commits
+   • Delete feature branch
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            CODE REVIEW CHECKLIST                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+□ Code Quality
+  □ Follows naming conventions
+  □ No code duplication
+  □ Functions are single-purpose
+  □ Proper error handling
+
+□ Type Safety
+  □ No 'any' types (unless necessary)
+  □ Interfaces properly defined
+  □ Type exports are correct
+
+□ Dependencies
+  □ No circular dependencies
+  □ Imports are organized
+  □ No unused imports
+
+□ Testing
+  □ Unit tests added/updated
+  □ Tests pass locally
+  □ Edge cases covered
+
+□ Documentation
+  □ JSDoc comments for public APIs
+  □ README updated if needed
+  □ Complex logic explained
+
+□ Performance
+  □ No obvious performance issues
+  □ Database queries optimized
+  □ Memory leaks prevented
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          DEPLOYMENT CONSIDERATIONS                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Build Process:
+──────────────
+1. npm run lint          # Check code quality
+2. npm test              # Run test suite
+3. npm run build         # Compile TypeScript
+4. npm run bundle        # Create production bundle
+
+Output:
+───────
+dist/
+├── components/
+│   ├── Player.js
+│   ├── User.js
+│   └── ...
+├── utils/
+│   ├── Matchmaking.js
+│   ├── mongo_schema.js
+│   └── ...
+└── main.js
+
+
+Environment Variables:
+──────────────────────
+MONGODB_URI=mongodb://localhost:27017/ifl-vr
+NODE_ENV=production
+PORT=3000
+LOG_LEVEL=info
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                           END OF DEVELOPMENT VIEW
+═══════════════════════════════════════════════════════════════════════════════

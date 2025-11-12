@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+package matchmaking;
+
+// Matchmaking Service - Independent microservice for player matchmaking
+service MatchmakingService {
+  // Join matchmaking queue
+  rpc JoinQueue(JoinQueueRequest) returns (JoinQueueResponse);
+  
+  // Leave matchmaking queue
+  rpc LeaveQueue(LeaveQueueRequest) returns (LeaveQueueResponse);
+  
+  // Get current queue status
+  rpc GetQueueStatus(QueueStatusRequest) returns (QueueStatusResponse);
+  
+  // Get lobby information
+  rpc GetLobby(GetLobbyRequest) returns (GetLobbyResponse);
+  
+  // Complete a match and update MMR
+  rpc CompleteMatch(CompleteMatchRequest) returns (CompleteMatchResponse);
+  
+  // Stream match updates (when match is found)
+  rpc StreamMatchUpdates(StreamMatchRequest) returns (stream MatchUpdate);
+}
+
+// ============================================================================
+// Request/Response Messages
+// ============================================================================
+
+message JoinQueueRequest {
+  string user_id = 1;
+  string username = 2;
+  int32 mmr = 3;
+  GameMode game_mode = 4;
+  optional string party_id = 5;
+}
+
+message JoinQueueResponse {
+  bool success = 1;
+  string message = 2;
+  int64 queued_at = 3;  // Unix timestamp
+}
+
+message LeaveQueueRequest {
+  string user_id = 1;
+}
+
+message LeaveQueueResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message QueueStatusRequest {
+  optional GameMode game_mode = 1;  // If empty, returns all queues
+}
+
+message QueueStatusResponse {
+  repeated QueueStats queue_stats = 1;
+}
+
+message GetLobbyRequest {
+  string lobby_id = 1;
+}
+
+message GetLobbyResponse {
+  bool found = 1;
+  optional Lobby lobby = 2;
+}
+
+message CompleteMatchRequest {
+  string lobby_id = 1;
+  repeated PlayerResult results = 2;
+}
+
+message CompleteMatchResponse {
+  bool success = 1;
+  string message = 2;
+  repeated MMRUpdate mmr_updates = 3;
+}
+
+message StreamMatchRequest {
+  string user_id = 1;
+}
+
+message MatchUpdate {
+  MatchUpdateType type = 1;
+  optional Lobby lobby = 2;
+  string message = 3;
+  int64 timestamp = 4;
+}
+
+// ============================================================================
+// Data Models
+// ============================================================================
+
+enum GameMode {
+  ONE_V_ONE = 0;
+  TWO_V_TWO = 1;
+  THREE_V_THREE = 2;
+  FFA = 3;
+  RANKED = 4;
+  CASUAL = 5;
+}
+
+enum MatchUpdateType {
+  QUEUED = 0;
+  SEARCHING = 1;
+  MATCH_FOUND = 2;
+  LOBBY_READY = 3;
+  MATCH_STARTED = 4;
+  MATCH_CANCELLED = 5;
+}
+
+enum LobbyStatus {
+  WAITING = 0;
+  READY = 1;
+  IN_PROGRESS = 2;
+  COMPLETED = 3;
+}
+
+message QueueStats {
+  GameMode game_mode = 1;
+  int32 players_in_queue = 2;
+  int32 average_mmr = 3;
+  int32 average_wait_time_seconds = 4;
+}
+
+message Lobby {
+  string lobby_id = 1;
+  GameMode game_mode = 2;
+  repeated PlayerInfo players = 3;
+  int32 average_mmr = 4;
+  int64 created_at = 5;
+  LobbyStatus status = 6;
+  int32 max_players = 7;
+}
+
+message PlayerInfo {
+  string user_id = 1;
+  string username = 2;
+  int32 mmr = 3;
+  string rank = 4;
+}
+
+message PlayerResult {
+  string user_id = 1;
+  bool won = 2;
+  int32 goals = 3;
+  int32 assists = 4;
+}
+
+message MMRUpdate {
+  string user_id = 1;
+  int32 old_mmr = 2;
+  int32 new_mmr = 3;
+  int32 mmr_change = 4;
+  string new_rank = 5;
+}
